@@ -33,7 +33,7 @@ const CameraFeed = forwardRef<HTMLVideoElement, CameraProps>(
     }, []);
 
     return (
-      <div className="relative w-full aspect-video bg-black rounded-xl overflow-hidden">
+      <div className="relative w-full h-[60vh] md:h-auto md:aspect-video bg-black rounded-xl overflow-hidden">
         <video ref={ref} className="hidden" width={640} height={480} muted />
         <canvas ref={resolvedCanvas} width={640} height={480} className="w-full h-full object-cover" />
       </div>
