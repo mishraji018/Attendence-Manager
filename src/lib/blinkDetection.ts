@@ -12,7 +12,7 @@ export const useFaceDetection = (
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const onBlinkRef = useRef(onBlink);
-  const eyeClosedFrames = useRef(0);
+  const earHistory = useRef<number[]>([]);
   const blinkCooldown = useRef(false);
   const rafRef = useRef<number>();
 
@@ -84,21 +84,26 @@ export const useFaceDetection = (
         const rightEAR = ear(det.landmarks.getRightEye());
         const avgEAR = (leftEAR + rightEAR) / 2;
 
-        // DEBUG — EAR value console mein dikhega
-        console.log(`EAR: ${avgEAR.toFixed(3)} | cooldown: ${blinkCooldown.current}`);
+        earHistory.current.push(avgEAR);
+        if (earHistory.current.length > 10) earHistory.current.shift();
 
-        if (avgEAR < EAR_THRESHOLD && !blinkCooldown.current) {
-          console.log(`✅ INSTANT BLINK DETECTED! EAR: ${avgEAR.toFixed(3)}`);
-          blinkCooldown.current = true;
-          onBlinkRef.current?.();
-          setTimeout(() => {
-            blinkCooldown.current = false;
-            console.log('🔄 Blink cooldown reset');
-          }, 1500);
+        if (earHistory.current.length === 10 && !blinkCooldown.current) {
+          const maxRecent = Math.max(...earHistory.current);
+          
+          // Agar current aankh pichle kuch frames ke muqable 18% zyada closed hui (movement of eye)
+          if (avgEAR < maxRecent * 0.82) {
+            console.log(`✅ AUTO-ADAPTIVE BLINK Sensed! Drop: ${maxRecent.toFixed(3)} to ${avgEAR.toFixed(3)}`);
+            blinkCooldown.current = true;
+            onBlinkRef.current?.();
+            setTimeout(() => {
+              blinkCooldown.current = false;
+              earHistory.current = [];
+            }, 1500);
+          }
         }
       } else {
         setFaceDetected(false);
-        eyeClosedFrames.current = 0;
+        earHistory.current = [];
         ctx.filter = 'brightness(1.1) contrast(1.1)';
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
         ctx.filter = 'none';
