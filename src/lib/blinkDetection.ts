@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
 
-const EAR_THRESHOLD = 0.26;
+const EAR_THRESHOLD = 0.28;
 const BLINK_MIN_FRAMES = 1;
 
 export const useFaceDetection = (
@@ -85,22 +85,16 @@ export const useFaceDetection = (
         const avgEAR = (leftEAR + rightEAR) / 2;
 
         // DEBUG — EAR value console mein dikhega
-        console.log(`EAR: ${avgEAR.toFixed(3)} | closed frames: ${eyeClosedFrames.current} | cooldown: ${blinkCooldown.current}`);
+        console.log(`EAR: ${avgEAR.toFixed(3)} | cooldown: ${blinkCooldown.current}`);
 
-        if (avgEAR < EAR_THRESHOLD) {
-          eyeClosedFrames.current++;
-          console.log(`👁️ Eye closing... frames: ${eyeClosedFrames.current}`);
-        } else {
-          if (eyeClosedFrames.current >= BLINK_MIN_FRAMES && !blinkCooldown.current) {
-            console.log(`✅ BLINK DETECTED! EAR: ${avgEAR.toFixed(3)} frames: ${eyeClosedFrames.current}`);
-            blinkCooldown.current = true;
-            onBlinkRef.current?.();
-            setTimeout(() => {
-              blinkCooldown.current = false;
-              console.log('🔄 Blink cooldown reset');
-            }, 1500);
-          }
-          eyeClosedFrames.current = 0;
+        if (avgEAR < EAR_THRESHOLD && !blinkCooldown.current) {
+          console.log(`✅ INSTANT BLINK DETECTED! EAR: ${avgEAR.toFixed(3)}`);
+          blinkCooldown.current = true;
+          onBlinkRef.current?.();
+          setTimeout(() => {
+            blinkCooldown.current = false;
+            console.log('🔄 Blink cooldown reset');
+          }, 1500);
         }
       } else {
         setFaceDetected(false);
