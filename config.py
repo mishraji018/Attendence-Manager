@@ -1,0 +1,38 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+class Config:
+    """Base configuration."""
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-fallback-key')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
+
+class DevelopmentConfig(Config):
+    """Development configuration — SQLite."""
+    DEBUG = True
+    TEMPLATES_AUTO_RELOAD = True
+    SEND_FILE_MAX_AGE_DEFAULT = 0
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(
+        os.path.abspath(os.path.dirname(__file__)), 'database', 'face_lock.db'
+    )
+
+
+class ProductionConfig(Config):
+    """Production configuration — MySQL."""
+    DEBUG = False
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        'DATABASE_URL',
+        'mysql+pymysql://user:password@localhost/face_lock'
+    )
+
+
+config = {
+    'development': DevelopmentConfig,
+    'production': ProductionConfig,
+    'default': DevelopmentConfig
+}

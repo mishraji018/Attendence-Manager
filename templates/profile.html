@@ -1,0 +1,426 @@
+{% extends "dashboard_layout.html" %}
+{% block title %}Profile — Smart Attendance{% endblock %}
+
+{% block dashboard_content %}
+<div class="mb-8 animate-fade-in-up">
+    <h1 class="font-heading text-2xl lg:text-3xl font-bold text-white mb-2" style="letter-spacing:-0.02em;">
+        Student Profile
+    </h1>
+    <p class="text-slate-400">Manage your personal details and face registration.</p>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Left Column: Face Registration & Pic -->
+    <div class="space-y-6 lg:col-span-1 animate-fade-in-up" style="animation-delay: 0.1s;">
+        <div class="glass-card p-6 text-center">
+            <div class="w-32 h-32 mx-auto rounded-full bg-bg-primary border-4 border-white/10 overflow-hidden mb-4 relative flex justify-center items-center">
+                {% if student.profile_pic %}
+                    <img id="profile-pic-display" src="{{ url_for('static', filename='uploads/' + student.profile_pic) }}" alt="Profile" class="w-full h-full object-cover">
+                {% else %}
+                    <img id="profile-pic-display" src="" alt="Profile" class="w-full h-full object-cover hidden">
+                    <svg id="profile-pic-placeholder" class="w-16 h-16 text-slate-500" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                {% endif %}
+            </div>
+            <h3 class="font-heading text-lg font-semibold text-white">{{ student.name }}</h3>
+            <p class="text-sm text-slate-400 mb-6">{{ student.roll_no }}</p>
+            
+            <input type="file" id="profile-pic-input" class="hidden" accept="image/png, image/jpeg, image/jpg">
+            <button id="upload-pic-btn" class="btn-outline w-full text-sm flex justify-center items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                Upload Profile Picture
+            </button>
+            <p id="upload-status" class="text-xs text-slate-500 mt-2">Can change anytime</p>
+        </div>
+
+        <div class="glass-card p-6">
+            <h3 class="font-heading text-lg font-semibold text-white mb-4">Face Recognition</h3>
+            <div class="mb-4">
+                <p class="text-sm text-slate-400 mb-1">Status</p>
+                {% if student.face_registered %}
+                    <div class="flex items-center gap-2 text-success font-medium">
+                        <span>✅</span> Registered
+                    </div>
+                {% else %}
+                    <div class="flex items-center gap-2 text-error font-medium">
+                        <span>❌</span> Not Registered
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% if student.face_registered and student.face_image %}
+                <!-- Scanned Face Preview -->
+                <div class="mt-4">
+                    <p class="text-xs text-slate-400 mb-2 uppercase tracking-wider">Registered Face</p>
+                    <div class="relative group">
+                        <div class="w-full aspect-square max-w-[180px] mx-auto rounded-xl overflow-hidden border-2 border-accent/30 shadow-[0_0_15px_rgba(139,92,246,0.2)] transition-all duration-300 group-hover:border-accent/60 group-hover:shadow-[0_0_25px_rgba(139,92,246,0.35)]">
+                            <img id="face-preview-img" src="{{ url_for('static', filename='uploads/' + student.face_image) }}" alt="Registered Face" class="w-full h-full object-cover">
+                        </div>
+                        <div class="absolute -top-2 -right-2 bg-success text-white text-xs px-2 py-0.5 rounded-full font-medium shadow-lg">
+                            Verified
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 text-center mt-3">This face will be used for attendance scanning.</p>
+                </div>
+                
+                <!-- Reset Request Button -->
+                {% if student.face_reset_requested %}
+                    <div class="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
+                        <div class="flex items-center justify-center gap-2 text-amber-400 text-sm font-medium mb-1">
+                            <svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                            Reset Pending
+                        </div>
+                        <p class="text-xs text-slate-400">Waiting for admin approval...</p>
+                    </div>
+                {% else %}
+                    <button id="request-reset-btn" class="btn-outline w-full text-xs mt-4 flex justify-center items-center gap-2 opacity-60 hover:opacity-100 hover:border-amber-500/50 hover:text-amber-400 transition-all">
+                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        Request Face Reset
+                    </button>
+                    <p class="text-xs text-slate-600 text-center mt-1">Requires admin approval</p>
+                {% endif %}
+
+            {% elif student.face_registered %}
+                <p class="text-xs text-slate-400 mt-2 bg-slate-800 p-3 rounded border border-slate-700">
+                    Face registration completed.<br>For changes contact administrator.
+                </p>
+            {% else %}
+                <button id="register-face-btn" class="btn-gradient w-full text-sm">Register Face</button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Personal Details -->
+    <div class="lg:col-span-2 space-y-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+        <div class="glass-card p-8">
+            <h3 class="font-heading text-xl font-semibold text-white mb-6">Personal Details</h3>
+            
+            <form id="profile-form" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div class="input-group">
+                        <input type="text" id="name" name="name" placeholder=" " value="{{ student.name }}" required>
+                        <label for="name">Name [Editable]</label>
+                    </div>
+
+                    <div class="input-group opacity-70">
+                        <input type="email" id="email" name="email" placeholder=" " value="{{ student.email }}" readonly>
+                        <label for="email">Email [Read Only]</label>
+                    </div>
+
+                    <div class="input-group opacity-70">
+                        <input type="text" id="roll_no" name="roll_no" placeholder=" " value="{{ student.roll_no }}" readonly>
+                        <label for="roll_no">Roll No [Read Only]</label>
+                    </div>
+
+                    <div class="input-group opacity-70">
+                        <input type="text" id="section" name="section" placeholder=" " value="{{ student.section or 'N/A' }}" readonly>
+                        <label for="section">Section [Read Only]</label>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/10 mt-6 flex justify-end items-center">
+                    <p id="save-status" class="text-sm mr-4 hidden"></p>
+                    <button type="submit" id="save-changes-btn" class="btn-gradient px-6 flex items-center gap-2">
+                        <span>Save Changes</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Webcam Modal -->
+<div id="webcam-modal" class="fixed inset-0 bg-[#0B1120]/90 backdrop-blur-sm z-50 hidden flex justify-center items-center p-4 opacity-0 transition-opacity duration-300">
+    <div class="glass-card max-w-md w-full p-6 relative">
+        <button id="close-modal-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        <h3 class="font-heading text-xl font-semibold text-white mb-2">Register Face</h3>
+        <p class="text-sm text-slate-400 mb-4">Please look directly at the camera in a well-lit area.</p>
+        
+        <div class="relative w-full aspect-video bg-black rounded-lg overflow-hidden mb-4 border border-white/10">
+            <video id="webcam-video" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline></video>
+            <!-- Camera Loading State -->
+            <div id="camera-loading" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                <svg class="animate-spin w-8 h-8 mb-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                <span class="text-sm">Starting camera...</span>
+            </div>
+        </div>
+        
+        <p id="capture-status" class="text-sm text-center mb-4 hidden"></p>
+        
+        <button id="capture-btn" class="btn-gradient w-full py-3 text-base flex justify-center items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Capture & Register
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+    // Handle Profile Picture Upload
+    const uploadBtn = document.getElementById('upload-pic-btn');
+    const fileInput = document.getElementById('profile-pic-input');
+    const uploadStatus = document.getElementById('upload-status');
+    const profilePicDisplay = document.getElementById('profile-pic-display');
+    const profilePicPlaceholder = document.getElementById('profile-pic-placeholder');
+
+    uploadBtn.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('profile_pic', file);
+
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Uploading...';
+        uploadStatus.textContent = 'Uploading...';
+        uploadStatus.className = 'text-xs text-accent mt-2';
+
+        try {
+            const response = await fetch('/api/profile/upload_picture', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                uploadStatus.textContent = 'Uploaded successfully!';
+                uploadStatus.className = 'text-xs text-success mt-2';
+                
+                // Update image instantly
+                const timestamp = new Date().getTime(); // Cache buster
+                const newSrc = `/static/uploads/${data.filename}?v=${timestamp}`;
+                
+                if (profilePicDisplay.classList.contains('hidden')) {
+                    profilePicDisplay.src = newSrc;
+                    profilePicDisplay.classList.remove('hidden');
+                    if (profilePicPlaceholder) profilePicPlaceholder.classList.add('hidden');
+                } else {
+                    profilePicDisplay.src = newSrc;
+                }
+                
+                // Also update the sidebar small avatar if it exists
+                const sidebarAvatar = document.querySelector('.w-10.h-10.rounded-xl.bg-gradient-to-br img');
+                if (sidebarAvatar) sidebarAvatar.src = newSrc;
+
+            } else {
+                uploadStatus.textContent = data.message || 'Upload failed.';
+                uploadStatus.className = 'text-xs text-error mt-2';
+            }
+        } catch (error) {
+            uploadStatus.textContent = 'An error occurred.';
+            uploadStatus.className = 'text-xs text-error mt-2';
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = '<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Upload Profile Picture';
+        }
+    });
+
+    // Handle Form Save Changes
+    const profileForm = document.getElementById('profile-form');
+    const saveBtn = document.getElementById('save-changes-btn');
+    const saveStatus = document.getElementById('save-status');
+
+    profileForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const nameInput = document.getElementById('name').value;
+        
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<svg class="animate-spin w-4 h-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Saving...';
+        
+        saveStatus.classList.remove('hidden');
+        saveStatus.textContent = 'Saving...';
+        saveStatus.className = 'text-sm text-accent mr-4';
+
+        try {
+            const response = await fetch('/api/profile/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: nameInput })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                saveStatus.textContent = 'Changes saved successfully!';
+                saveStatus.className = 'text-sm text-success mr-4';
+                
+                // Update names on UI
+                document.querySelector('h3.font-heading.text-lg').textContent = nameInput;
+                const sidebarName = document.querySelector('h3.font-heading.text-sm');
+                if(sidebarName) sidebarName.textContent = nameInput;
+                const dashboardWelcome = document.querySelector('.font-heading.text-2xl');
+                if(dashboardWelcome) dashboardWelcome.innerHTML = `Welcome, ${nameInput}! &#x1F44B;`;
+                
+            } else {
+                saveStatus.textContent = data.message || 'Failed to save changes.';
+                saveStatus.className = 'text-sm text-error mr-4';
+            }
+        } catch (error) {
+            saveStatus.textContent = 'An error occurred.';
+            saveStatus.className = 'text-sm text-error mr-4';
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<span>Save Changes</span>';
+            setTimeout(() => { saveStatus.classList.add('hidden'); }, 3000);
+        }
+    });
+
+    // Face Registration Logic
+    const registerFaceBtn = document.getElementById('register-face-btn');
+    const webcamModal = document.getElementById('webcam-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const videoElement = document.getElementById('webcam-video');
+    const cameraLoading = document.getElementById('camera-loading');
+    const captureBtn = document.getElementById('capture-btn');
+    const captureStatus = document.getElementById('capture-status');
+    let stream = null;
+
+    if (registerFaceBtn) {
+        registerFaceBtn.addEventListener('click', async () => {
+            webcamModal.classList.remove('hidden');
+            setTimeout(() => { webcamModal.classList.remove('opacity-0'); }, 10);
+            
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoElement.srcObject = stream;
+                videoElement.onloadedmetadata = () => {
+                    cameraLoading.classList.add('hidden');
+                };
+            } catch (err) {
+                cameraLoading.innerHTML = `<span class="text-error text-center px-4">Camera access denied. Please allow camera permissions.</span>`;
+            }
+        });
+    }
+
+    const stopCamera = () => {
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+        videoElement.srcObject = null;
+        cameraLoading.classList.remove('hidden');
+    };
+
+    if (closeModalBtn) {
+        closeModalBtn.addEventListener('click', () => {
+            webcamModal.classList.add('opacity-0');
+            setTimeout(() => { 
+                webcamModal.classList.add('hidden'); 
+                stopCamera();
+                captureStatus.classList.add('hidden');
+            }, 300);
+        });
+    }
+
+    if (captureBtn) {
+        captureBtn.addEventListener('click', async () => {
+            if (!stream) return;
+            
+            // Draw video to canvas at reduced size for faster upload
+            const canvas = document.createElement('canvas');
+            const maxDim = 640;
+            let cw = videoElement.videoWidth;
+            let ch = videoElement.videoHeight;
+            if (Math.max(cw, ch) > maxDim) {
+                const scale = maxDim / Math.max(cw, ch);
+                cw = Math.round(cw * scale);
+                ch = Math.round(ch * scale);
+            }
+            canvas.width = cw;
+            canvas.height = ch;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(videoElement, 0, 0, cw, ch);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.7);
+            
+            captureBtn.disabled = true;
+            captureBtn.innerHTML = '<svg class="animate-spin w-5 h-5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Analyzing Face...';
+            captureStatus.textContent = 'AI is processing your face... First time may take up to 30 seconds.';
+            captureStatus.className = 'text-sm text-center mb-4 text-accent';
+            captureStatus.classList.remove('hidden');
+
+            try {
+                // 60 second timeout for first-time model download
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 60000);
+                
+                const response = await fetch('/api/face/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    captureStatus.textContent = 'Face Registered Successfully! ✅';
+                    captureStatus.className = 'text-sm text-center mb-4 text-success';
+                    captureBtn.innerHTML = 'Registration Complete';
+                    setTimeout(() => { window.location.reload(); }, 1500);
+                } else {
+                    captureStatus.textContent = data.message || 'Registration failed.';
+                    captureStatus.className = 'text-sm text-center mb-4 text-error';
+                    captureBtn.disabled = false;
+                    captureBtn.innerHTML = 'Try Again';
+                }
+            } catch (error) {
+                captureStatus.textContent = 'Network Error.';
+                captureStatus.className = 'text-sm text-center mb-4 text-error';
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = 'Try Again';
+            }
+        });
+    }
+
+    // Face Reset Request Logic
+    const requestResetBtn = document.getElementById('request-reset-btn');
+    if (requestResetBtn) {
+        requestResetBtn.addEventListener('click', async () => {
+            const confirmed = confirm('Are you sure you want to request a face reset?\n\nThis will be sent to the admin for approval. You cannot undo this action.');
+            if (!confirmed) return;
+
+            requestResetBtn.disabled = true;
+            requestResetBtn.innerHTML = '<svg class="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Submitting...';
+
+            try {
+                const response = await fetch('/api/face/request-reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    requestResetBtn.outerHTML = `
+                        <div class="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-center">
+                            <div class="flex items-center justify-center gap-2 text-amber-400 text-sm font-medium mb-1">
+                                <svg class="w-4 h-4 animate-pulse" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                                Reset Pending
+                            </div>
+                            <p class="text-xs text-slate-400">Waiting for admin approval...</p>
+                        </div>`;
+                } else {
+                    alert(data.message);
+                    requestResetBtn.disabled = false;
+                    requestResetBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg> Request Face Reset';
+                }
+            } catch (error) {
+                alert('Network error. Please try again.');
+                requestResetBtn.disabled = false;
+                requestResetBtn.innerHTML = 'Request Face Reset';
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden bg-transparent">
+    <!-- Sidebar -->
+    <aside class="w-64 flex-shrink-0 bg-[#0B1120]/50 backdrop-blur-2xl border-r border-white/10 shadow-[4px_0_24px_rgba(0,0,0,0.2)] flex flex-col hidden md:flex relative z-10">
+        <div class="p-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-secondary flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <span class="font-heading text-lg font-semibold tracking-tight text-white">Face-Lock</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+            <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {% if request.endpoint == 'auth.dashboard_page' %}bg-accent/15 text-accent font-medium{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %}">
+                <span>🏠</span> Dashboard
+            </a>
+            <a href="/attendance-scan" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {% if request.endpoint == 'attendance.scan_page' %}bg-accent/15 text-accent font-medium{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %}">
+                <span>📸</span> Attendance Scan
+            </a>
+            <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-slate-400 hover:text-white hover:bg-white/5">
+                <span>📊</span> Attendance Tracker
+            </a>
+            <a href="/profile" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors {% if request.endpoint == 'auth.profile_page' %}bg-accent/15 text-accent font-medium{% else %}text-slate-400 hover:text-white hover:bg-white/5{% endif %}">
+                <span>👤</span> Profile
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-white/5">
+            <div class="flex items-center justify-between px-2 py-2">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-accent/20 text-accent flex items-center justify-center font-bold text-sm overflow-hidden border border-white/10">
+                        {% if student.profile_pic %}
+                            <img src="{{ url_for('static', filename='uploads/' + student.profile_pic) }}" alt="Profile" class="w-full h-full object-cover">
+                        {% else %}
+                            {{ student.name[0].upper() if student.name else 'U' }}
+                        {% endif %}
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-medium text-white truncate">{{ student.name }}</p>
+                        <p class="text-xs text-slate-500 truncate">Student</p>
+                    </div>
+                </div>
+                <button id="sidebar-logout" class="flex-shrink-0 text-slate-400 hover:text-error transition-colors p-2 rounded-lg hover:bg-white/5" title="Logout">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto relative">
+        <!-- Mobile Header -->
+        <header class="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-[#0B1120]/50 backdrop-blur-2xl relative z-10">
+            <span class="font-heading text-lg font-semibold text-white">Face-Lock</span>
+            <button id="mobile-menu-btn" class="text-white">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+            </button>
+        </header>
+
+        <!-- Mobile Menu (Hidden by default) -->
+        <div id="mobile-menu" class="hidden md:hidden absolute top-0 left-0 w-full h-full bg-[#0B1120]/80 backdrop-blur-3xl z-50 flex flex-col">
+            <div class="p-4 flex justify-end border-b border-white/5">
+                <button id="mobile-menu-close" class="text-white">
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <nav class="flex-1 px-4 py-4 space-y-2">
+                <a href="/dashboard" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white">🏠 Dashboard</a>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white">📸 Attendance Scan</a>
+                <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white">📊 Attendance Tracker</a>
+                <a href="/profile" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white">👤 Profile</a>
+                <button id="mobile-logout" class="flex w-full items-center gap-3 px-4 py-3 rounded-lg text-error">🚪 Logout</button>
+            </nav>
+        </div>
+
+        <div class="p-6 lg:p-10 max-w-5xl mx-auto">
+            {% block dashboard_content %}{% endblock %}
+        </div>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const logoutAction = async () => {
+        try {
+            const res = await fetch('/api/logout', { method: 'POST' });
+            const data = await res.json();
+            if (data.success) {
+                window.location.href = data.redirect || '/login';
+            }
+        } catch (err) {
+            window.location.href = '/login';
+        }
+    };
+
+    document.getElementById('sidebar-logout')?.addEventListener('click', logoutAction);
+    document.getElementById('mobile-logout')?.addEventListener('click', logoutAction);
+
+    const mobileMenu = document.getElementById('mobile-menu');
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+        mobileMenu.classList.remove('hidden');
+    });
+    document.getElementById('mobile-menu-close')?.addEventListener('click', () => {
+        mobileMenu.classList.add('hidden');
+    });
+</script>
+
+<!-- 3D Tilt Effect Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+<script>
+    // Initialize 3D Glass Tilt Effect
+    VanillaTilt.init(document.querySelectorAll(".glass-card"), {
+        max: 5,               // Maximum tilt rotation (degrees)
+        speed: 400,           // Speed of the enter/exit transition
+        glare: true,          // Add a glare effect
+        "max-glare": 0.15,    // Maximum glare opacity
+        scale: 1.02,          // Slight zoom on hover
+        perspective: 1000     // Transform perspective
+    });
+</script>
+
+{% block dashboard_scripts %}{% endblock %}
+{% endblock %}

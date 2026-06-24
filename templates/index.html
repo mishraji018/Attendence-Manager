@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Smart Attendance — AI-Powered Face Recognition{% endblock %}
+
+{% block content %}
+<!-- Background Effects -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="gradient-orb absolute w-96 h-96 bg-accent/20 -top-48 -left-48"></div>
+    <div class="gradient-orb absolute w-80 h-80 bg-accent-secondary/15 -bottom-40 -right-40" style="animation-delay: -4s;"></div>
+</div>
+
+<div class="relative min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <nav class="flex items-center justify-between px-6 lg:px-12 py-5">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-accent-secondary flex items-center justify-center">
+                <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+            </div>
+            <span class="font-heading text-lg font-semibold tracking-tight text-white">Smart Attendance</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="/login" class="btn-outline text-sm px-5 py-2.5">Login</a>
+            <a href="/register" class="btn-gradient text-sm px-5 py-2.5">Get Started</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <main class="flex-1 flex items-center justify-center px-6 lg:px-12">
+        <div class="text-center max-w-3xl animate-fade-in-up">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card text-sm text-accent mb-6">
+                <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+                AI-Powered Attendance System
+            </div>
+
+            <h1 class="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6" style="letter-spacing: -0.02em;">
+                Smart Attendance<br>
+                <span class="bg-gradient-to-r from-accent to-accent-secondary bg-clip-text text-transparent">
+                    Redefined
+                </span>
+            </h1>
+
+            <p class="text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed">
+                Mark attendance with face recognition, GPS verification, and liveness detection.
+                Secure, fast, and completely automated.
+            </p>
+
+            <div class="flex items-center justify-center gap-4 flex-wrap">
+                <a href="/register" class="btn-gradient text-base px-8 py-3.5">
+                    Get Started →
+                </a>
+                <a href="/login" class="btn-outline text-base px-8 py-3.5">
+                    Login
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Features Section -->
+    <section class="px-6 lg:px-12 pb-16">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <!-- Feature 1 -->
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.1s;">
+                <div class="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                </div>
+                <h3 class="font-heading text-lg font-semibold text-white mb-2">Face Recognition</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">SCRFD detection + ArcFace recognition for accurate, instant identity verification.</p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+                <div class="w-12 h-12 rounded-xl bg-accent-secondary/15 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6 text-accent-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </div>
+                <h3 class="font-heading text-lg font-semibold text-white mb-2">GPS Verification</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">Geofencing ensures attendance is only marked when students are physically present.</p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.3s;">
+                <div class="w-12 h-12 rounded-xl bg-success/15 flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <h3 class="font-heading text-lg font-semibold text-white mb-2">Liveness Detection</h3>
+                <p class="text-sm text-slate-400 leading-relaxed">MediaPipe blink detection prevents spoofing with photos or videos.</p>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

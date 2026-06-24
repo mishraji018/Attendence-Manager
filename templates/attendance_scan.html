@@ -1,0 +1,241 @@
+{% extends "dashboard_layout.html" %}
+{% block title %}Attendance Scan — Face-Lock{% endblock %}
+
+{% block dashboard_content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="mb-6 animate-fade-in-up">
+        <h1 class="font-heading text-2xl lg:text-3xl font-bold text-white mb-1" style="letter-spacing:-0.02em;">
+            Scan Attendance 📸
+        </h1>
+        <p class="text-sm text-slate-400">Look at the camera and click scan to mark your attendance.</p>
+    </div>
+
+    {% if not student.face_registered %}
+    <!-- Not Registered Warning -->
+    <div class="glass-card p-8 text-center animate-fade-in-up">
+        <svg class="w-16 h-16 text-error mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+        <h3 class="font-heading text-lg text-white mb-2">Face Not Registered</h3>
+        <p class="text-sm text-slate-400 mb-4">You need to register your face first before scanning attendance.</p>
+        <a href="{{ url_for('auth.profile_page') }}" class="btn-gradient inline-block px-6">Go to Profile → Register Face</a>
+    </div>
+    {% else %}
+    <!-- Scan Interface -->
+    <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.1s;">
+        <!-- Subject Selector -->
+        <div class="mb-5">
+            <label class="block text-sm text-slate-400 mb-2 font-medium">Select Subject</label>
+            <select id="subject-select" class="w-full px-4 py-3 bg-[#0B1120] border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-accent focus:shadow-[0_0_15px_rgba(139,92,246,0.2)] transition-all appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2394A3B8%22 stroke-width=%222%22%3E%3Cpath d=%22M6 9l6 6 6-6%22/%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 12px center; background-size: 20px;">
+                <option value="" disabled selected>Choose a subject...</option>
+                {% for subject in subjects %}
+                <option value="{{ subject }}">{{ subject }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Camera Feed -->
+        <div class="relative w-full aspect-video bg-black rounded-xl overflow-hidden border border-white/10 mb-4">
+            <video id="scan-video" class="w-full h-full object-cover transform scale-x-[-1]" autoplay playsinline></video>
+            
+            <!-- Face Detection Overlay -->
+            <div id="scan-overlay" class="absolute inset-0 pointer-events-none">
+                <!-- Corner brackets for scanning effect -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 md:w-56 md:h-56">
+                    <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-accent rounded-tl-lg"></div>
+                    <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-accent rounded-tr-lg"></div>
+                    <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-accent rounded-bl-lg"></div>
+                    <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-accent rounded-br-lg"></div>
+                    <!-- Scanning line animation -->
+                    <div id="scan-line" class="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-accent to-transparent opacity-0 transition-opacity"></div>
+                </div>
+            </div>
+
+            <!-- Camera Loading -->
+            <div id="cam-loading" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-black/80">
+                <svg class="animate-spin w-8 h-8 mb-2" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                <span class="text-sm">Starting camera...</span>
+            </div>
+            
+            <!-- Success Overlay -->
+            <div id="success-overlay" class="absolute inset-0 bg-success/20 backdrop-blur-sm flex flex-col items-center justify-center hidden">
+                <div class="w-20 h-20 rounded-full bg-success/30 flex items-center justify-center mb-3 animate-bounce">
+                    <svg class="w-12 h-12 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <p class="text-success text-lg font-bold font-heading">Attendance Marked!</p>
+                <p id="success-subject" class="text-white/80 text-sm mt-1"></p>
+            </div>
+
+            <!-- Error Overlay -->
+            <div id="error-overlay" class="absolute inset-0 bg-error/10 flex flex-col items-center justify-center hidden">
+                <div class="w-16 h-16 rounded-full bg-error/20 flex items-center justify-center mb-3">
+                    <svg class="w-10 h-10 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </div>
+                <p id="error-msg" class="text-error text-sm font-medium text-center px-4"></p>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div id="status-bar" class="text-center mb-4 hidden">
+            <p id="status-text" class="text-sm"></p>
+        </div>
+
+        <!-- Scan Button -->
+        <button id="scan-btn" class="btn-gradient w-full py-4 text-base font-semibold flex justify-center items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+            Scan & Mark Attendance
+        </button>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+    const video = document.getElementById('scan-video');
+    const camLoading = document.getElementById('cam-loading');
+    const scanBtn = document.getElementById('scan-btn');
+    const subjectSelect = document.getElementById('subject-select');
+    const statusBar = document.getElementById('status-bar');
+    const statusText = document.getElementById('status-text');
+    const successOverlay = document.getElementById('success-overlay');
+    const errorOverlay = document.getElementById('error-overlay');
+    const errorMsg = document.getElementById('error-msg');
+    const successSubject = document.getElementById('success-subject');
+    const scanLine = document.getElementById('scan-line');
+    let stream = null;
+
+    // Start camera on page load
+    async function startCamera() {
+        if (!video) return;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                if (camLoading) camLoading.classList.add('hidden');
+            };
+        } catch (err) {
+            if (camLoading) camLoading.innerHTML = '<span class="text-error text-center px-4">Camera access denied. Please allow permissions.</span>';
+        }
+    }
+    startCamera();
+
+    // Scan button handler
+    if (scanBtn) {
+        scanBtn.addEventListener('click', async () => {
+            // Validate subject
+            if (!subjectSelect || !subjectSelect.value) {
+                subjectSelect.focus();
+                subjectSelect.classList.add('border-error');
+                setTimeout(() => subjectSelect.classList.remove('border-error'), 2000);
+                return;
+            }
+
+            if (!stream) return;
+
+            // Hide previous overlays
+            successOverlay.classList.add('hidden');
+            errorOverlay.classList.add('hidden');
+
+            // Show scanning animation
+            scanLine.classList.remove('opacity-0');
+            scanLine.style.animation = 'scanAnim 1.5s ease-in-out infinite';
+            
+            // Capture frame
+            const canvas = document.createElement('canvas');
+            const maxDim = 640;
+            let cw = video.videoWidth, ch = video.videoHeight;
+            if (Math.max(cw, ch) > maxDim) {
+                const s = maxDim / Math.max(cw, ch);
+                cw = Math.round(cw * s);
+                ch = Math.round(ch * s);
+            }
+            canvas.width = cw;
+            canvas.height = ch;
+            canvas.getContext('2d').drawImage(video, 0, 0, cw, ch);
+            const imageData = canvas.toDataURL('image/jpeg', 0.7);
+
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '<svg class="animate-spin w-6 h-6" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Verifying Face...';
+
+            statusBar.classList.remove('hidden');
+            statusText.textContent = 'Analyzing your face...';
+            statusText.className = 'text-sm text-accent';
+
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                const response = await fetch('/api/face/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageData, subject: subjectSelect.value }),
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                const data = await response.json();
+
+                // Stop scan animation
+                scanLine.classList.add('opacity-0');
+                scanLine.style.animation = '';
+
+                if (data.success) {
+                    // SUCCESS
+                    successOverlay.classList.remove('hidden');
+                    successSubject.textContent = `${data.subject} — ${data.confidence}% match`;
+                    statusText.textContent = 'Attendance marked successfully!';
+                    statusText.className = 'text-sm text-success font-medium';
+                    
+                    scanBtn.innerHTML = '✅ Attendance Marked';
+                    // Disable the used subject
+                    const opt = subjectSelect.querySelector(`option[value="${data.subject}"]`);
+                    if (opt) {
+                        opt.disabled = true;
+                        opt.textContent = `${data.subject} (Marked ✅)`;
+                    }
+                    subjectSelect.value = '';
+                    
+                    setTimeout(() => {
+                        successOverlay.classList.add('hidden');
+                        scanBtn.disabled = false;
+                        scanBtn.innerHTML = '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg> Scan & Mark Attendance';
+                    }, 3000);
+                } else {
+                    // ERROR
+                    errorOverlay.classList.remove('hidden');
+                    errorMsg.textContent = data.message;
+                    statusText.textContent = data.message;
+                    statusText.className = 'text-sm text-error';
+
+                    setTimeout(() => {
+                        errorOverlay.classList.add('hidden');
+                    }, 3000);
+
+                    scanBtn.disabled = false;
+                    scanBtn.innerHTML = '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg> Try Again';
+                }
+            } catch (error) {
+                scanLine.classList.add('opacity-0');
+                scanLine.style.animation = '';
+                statusText.textContent = 'Network error. Please try again.';
+                statusText.className = 'text-sm text-error';
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = 'Try Again';
+            }
+        });
+    }
+
+    // Cleanup on page leave
+    window.addEventListener('beforeunload', () => {
+        if (stream) stream.getTracks().forEach(t => t.stop());
+    });
+</script>
+
+<style>
+    @keyframes scanAnim {
+        0% { top: 0; opacity: 0; }
+        20% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { top: 100%; opacity: 0; }
+    }
+</style>
+{% endblock %}

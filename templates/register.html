@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Register — Smart Attendance{% endblock %}
+
+{% block content %}
+<!-- Toast Notification -->
+<div id="toast" class="toast"></div>
+
+<!-- Background Effects -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+    <div class="gradient-orb absolute w-96 h-96 bg-accent/20 -top-48 -left-48"></div>
+    <div class="gradient-orb absolute w-80 h-80 bg-accent-secondary/15 -bottom-40 -right-40" style="animation-delay: -4s;"></div>
+    <div class="dot-grid"></div>
+</div>
+
+<div class="min-h-screen flex items-center justify-center p-6 relative z-10">
+    <div class="w-full max-w-md animate-fade-in-up">
+        
+        <div class="text-center mb-8">
+            <h1 class="font-heading text-3xl font-bold text-white mb-2">Create Account</h1>
+            <p class="text-slate-400 text-sm">Join Smart Attendance</p>
+        </div>
+
+        <div class="glass-card p-8">
+            <form id="register-form" novalidate>
+                <div class="input-group">
+                    <input type="text" id="name" name="name" placeholder=" " autocomplete="name" required>
+                    <label for="name">Full Name</label>
+                    <p class="error-text" id="name-error"></p>
+                </div>
+
+                <div class="input-group">
+                    <input type="text" id="roll_no" name="roll_no" placeholder=" " autocomplete="off" required>
+                    <label for="roll_no">Roll Number</label>
+                    <p class="error-text" id="roll_no-error"></p>
+                </div>
+
+                <div class="input-group">
+                    <input type="email" id="email" name="email" placeholder=" " autocomplete="email" required>
+                    <label for="email">Email Address</label>
+                    <p class="error-text" id="email-error"></p>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="password" name="password" placeholder=" " autocomplete="new-password" required>
+                    <label for="password">Password</label>
+                    <div class="password-meter">
+                        <div class="meter-fill" id="meter-fill"></div>
+                    </div>
+                    <p class="password-label" id="password-strength-label"></p>
+                    <p class="error-text" id="password-error"></p>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder=" " autocomplete="new-password" required>
+                    <label for="confirm_password">Confirm Password</label>
+                    <p class="error-text" id="confirm_password-error"></p>
+                </div>
+
+                <button type="submit" id="btn-submit" class="btn-gradient w-full mt-4">
+                    Create Account
+                </button>
+            </form>
+        </div>
+
+        <p class="text-center text-slate-500 text-sm mt-6">
+            Already have an account? <a href="/login" class="text-accent hover:text-accent-secondary transition-colors font-medium">Login</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/register.js') }}"></script>
+{% endblock %}

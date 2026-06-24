@@ -1,0 +1,3 @@
+# This directory stores the SQLite database file (face_lock.db).
+# The .db file is auto-created when the Flask app starts.
+# Do not commit .db files to version control.

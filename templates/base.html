@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Attendance System — AI-powered face recognition attendance with GPS verification and liveness detection.">
+    <title>{% block title %}Smart Attendance{% endblock %}</title>
+
+    <!-- Google Fonts: Sora + Manrope -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS v3 CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'heading': ['Sora', 'sans-serif'],
+                        'body': ['Manrope', 'sans-serif'],
+                    },
+                    colors: {
+                        'bg-primary': '#0B1120',
+                        'bg-secondary': '#0f172a',
+                        'accent': '#8B5CF6',
+                        'accent-secondary': '#06B6D4',
+                        'success': '#10B981',
+                        'error': '#EF4444',
+                        'warning': '#F59E0B',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.0">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-transparent font-body text-slate-200 min-h-screen antialiased">
+    {% block content %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>
