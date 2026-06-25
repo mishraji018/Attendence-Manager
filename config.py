@@ -13,11 +13,17 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    """Development configuration — SQLite."""
+    """Development configuration."""
     DEBUG = True
     TEMPLATES_AUTO_RELOAD = True
     SEND_FILE_MAX_AGE_DEFAULT = 0
-    if os.environ.get('VERCEL'):
+    
+    if os.environ.get('DATABASE_URL'):
+        uri = os.environ.get('DATABASE_URL')
+        if uri.startswith("postgres://"):
+            uri = uri.replace("postgres://", "postgresql://", 1)
+        SQLALCHEMY_DATABASE_URI = uri
+    elif os.environ.get('VERCEL'):
         SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/face_lock.db'
     else:
         SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(
@@ -26,12 +32,16 @@ class DevelopmentConfig(Config):
 
 
 class ProductionConfig(Config):
-    """Production configuration — MySQL."""
+    """Production configuration."""
     DEBUG = False
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
-        'DATABASE_URL',
-        'mysql+pymysql://user:password@localhost/face_lock'
-    )
+    
+    if os.environ.get('DATABASE_URL'):
+        uri = os.environ.get('DATABASE_URL')
+        if uri.startswith("postgres://"):
+            uri = uri.replace("postgres://", "postgresql://", 1)
+        SQLALCHEMY_DATABASE_URI = uri
+    else:
+        SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://user:password@localhost/face_lock'
 
 
 config = {

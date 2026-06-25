@@ -5,3 +5,4 @@ bcrypt==4.3.0
 python-dotenv==1.1.0
 numpy
 opencv-python-headless
+psycopg2-binary
