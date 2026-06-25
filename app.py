@@ -64,7 +64,8 @@ def create_app(config_name=None):
     return app
 
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     print('[*] Face-Lock server starting on http://localhost:5000')
     app.run(host='0.0.0.0', port=5000, debug=True)
