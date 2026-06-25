@@ -13,6 +13,8 @@ auth_bp = Blueprint('auth', __name__)
 def login_page():
     """Serve the login page."""
     if current_user.is_authenticated:
+        if current_user.is_admin:
+            return redirect(url_for('admin.admin_dashboard'))
         return redirect(url_for('auth.dashboard_page'))
     return render_template('login.html')
 
@@ -50,10 +52,12 @@ def login():
     # Login the user (Flask-Login session)
     login_user(student, remember=data.get('remember', False))
 
+    redirect_url = url_for('admin.admin_dashboard') if student.is_admin else url_for('auth.dashboard_page')
+
     return jsonify({
         'success': True,
         'message': 'Login successful!',
-        'redirect': url_for('auth.dashboard_page')
+        'redirect': redirect_url
     })
 
 
@@ -73,7 +77,64 @@ def logout():
 @login_required
 def dashboard_page():
     """Serve the student dashboard."""
-    return render_template('dashboard.html', student=current_user)
+    from models.attendance import Attendance
+    from routes.attendance import SUBJECTS
+    from models import db
+    
+    attendance_stats = []
+    total_attended = 0
+    total_possible = 0
+    
+    for subject in SUBJECTS:
+        # Dynamically determine total classes held by finding the maximum attendance
+        # marked by ANY student for this subject.
+        max_attended_query = db.session.query(db.func.count(Attendance.id)).filter_by(
+            subject=subject, status='present'
+        ).group_by(Attendance.student_id).order_by(
+            db.func.count(Attendance.id).desc()
+        ).first()
+        
+        total_classes_per_subject = max_attended_query[0] if max_attended_query else 0
+        
+        attended = Attendance.query.filter_by(student_id=current_user.id, subject=subject, status='present').count()
+        total_attended += attended
+        total_possible += total_classes_per_subject
+        
+        if total_classes_per_subject == 0:
+            percentage = 0
+            text_color = 'text-slate-400'
+            bg_color = 'bg-slate-500'
+        else:
+            percentage = int((attended / total_classes_per_subject) * 100)
+            if percentage < 50:
+                text_color = 'text-error'
+                bg_color = 'bg-error'
+            elif percentage < 75:
+                text_color = 'text-warning'
+                bg_color = 'bg-warning'
+            else:
+                text_color = 'text-success'
+                bg_color = 'bg-success'
+            
+        attendance_stats.append({
+            'subject': subject,
+            'attended': attended,
+            'total': total_classes_per_subject,
+            'percentage': percentage,
+            'text_color': text_color,
+            'bg_color': bg_color
+        })
+        
+    overall_percentage = int((total_attended / total_possible) * 100) if total_possible > 0 else 0
+    chart_percent = overall_percentage
+    
+    return render_template('dashboard.html', 
+                           student=current_user, 
+                           stats=attendance_stats,
+                           overall_percentage=overall_percentage,
+                           chart_percent=chart_percent,
+                           total_attended=total_attended,
+                           total_possible=total_possible)
 
 
 @auth_bp.route('/profile')

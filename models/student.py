@@ -20,5 +20,10 @@ class Student(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    @property
+    def is_admin(self):
+        """Returns True if the user is an admin based on their email domain."""
+        return self.email.endswith('@kiet.edu') if self.email else False
+
     def __repr__(self):
         return f'<Student {self.roll_no} - {self.name}>'

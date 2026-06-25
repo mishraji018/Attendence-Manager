@@ -70,17 +70,31 @@
         </div>
 
         <div class="flex items-center gap-4 mb-4">
-            <div class="w-12 h-12 rounded-full flex-shrink-0 relative" style="background: conic-gradient(#10B981 0% 75%, #EF4444 75% 100%); box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>
+            {% if total_possible == 0 %}
+            <div class="w-12 h-12 rounded-full flex-shrink-0 relative" style="background: conic-gradient(#334155 0% 100%); box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>
             <div class="flex flex-col gap-1 w-full">
                 <div class="flex justify-between items-center">
                     <span class="text-xs text-slate-300">Present</span>
-                    <span class="font-heading font-bold text-success text-sm">75%</span>
+                    <span class="font-heading font-bold text-slate-400 text-sm">--%</span>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-xs text-slate-300">Absent</span>
-                    <span class="font-heading font-bold text-error text-sm">25%</span>
+                    <span class="font-heading font-bold text-slate-400 text-sm">--%</span>
                 </div>
             </div>
+            {% else %}
+            <div class="w-12 h-12 rounded-full flex-shrink-0 relative" style="background: conic-gradient(#10B981 0% {{ chart_percent }}%, #EF4444 {{ chart_percent }}% 100%); box-shadow: 0 4px 10px rgba(0,0,0,0.3);"></div>
+            <div class="flex flex-col gap-1 w-full">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-slate-300">Present</span>
+                    <span class="font-heading font-bold text-success text-sm">{{ overall_percentage }}%</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs text-slate-300">Absent</span>
+                    <span class="font-heading font-bold text-error text-sm">{{ 100 - overall_percentage }}%</span>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -127,65 +141,143 @@
     <h2 class="font-heading text-xl font-bold text-white mb-6">Subject-wise Attendance</h2>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Subject 1 -->
+        {% for stat in stats %}
         <div class="glass-card p-5">
             <div class="flex justify-between items-center mb-3">
-                <h4 class="font-semibold text-slate-200">Database Management Systems</h4>
-                <span class="text-success font-heading font-bold">85%</span>
+                <h4 class="font-semibold text-slate-200">{{ stat.subject }}</h4>
+                <div class="flex items-center gap-3">
+                    <span class="{{ stat.text_color }} font-heading font-bold">{{ stat.percentage }}%</span>
+                    <button onclick="openSubjectModal('{{ stat.subject }}')" class="w-7 h-7 rounded-md bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-accent hover:bg-white/10 transition-colors" title="View Subject History">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                    </button>
+                </div>
             </div>
             <div class="flex justify-between text-xs text-slate-400 mb-2">
-                <span>Classes: 20</span>
-                <span>Attended: 17</span>
+                <span>Classes: {{ stat.total }}</span>
+                <span>Attended: {{ stat.attended }}</span>
             </div>
             <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                <div class="h-full bg-success transition-all duration-1000" style="width: 85%;"></div>
+                <div class="h-full {{ stat.bg_color }} transition-all duration-1000" style="width: {{ stat.percentage }}%;"></div>
             </div>
         </div>
-
-        <!-- Subject 2 -->
-        <div class="glass-card p-5">
-            <div class="flex justify-between items-center mb-3">
-                <h4 class="font-semibold text-slate-200">Operating Systems</h4>
-                <span class="text-warning font-heading font-bold">60%</span>
-            </div>
-            <div class="flex justify-between text-xs text-slate-400 mb-2">
-                <span>Classes: 20</span>
-                <span>Attended: 12</span>
-            </div>
-            <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                <div class="h-full bg-warning transition-all duration-1000" style="width: 60%;"></div>
-            </div>
+        {% else %}
+        <div class="col-span-1 md:col-span-2 text-center py-8">
+            <p class="text-slate-400">No attendance data available yet.</p>
         </div>
+        {% endfor %}
+    </div>
+</div>
 
-        <!-- Subject 3 -->
-        <div class="glass-card p-5">
-            <div class="flex justify-between items-center mb-3">
-                <h4 class="font-semibold text-slate-200">Computer Networks</h4>
-                <span class="text-success font-heading font-bold">90%</span>
+<!-- Subject History Modal -->
+<div id="subject-modal" class="fixed inset-0 z-[100] hidden">
+    <!-- Backdrop -->
+    <div class="absolute inset-0 bg-[#0B1120]/80 backdrop-blur-sm" onclick="closeSubjectModal()"></div>
+    
+    <!-- Modal Content -->
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md p-4">
+        <div class="glass-card flex flex-col max-h-[80vh] border border-white/10 shadow-2xl shadow-accent/20">
+            <!-- Header -->
+            <div class="flex items-center justify-between p-5 border-b border-white/10 flex-shrink-0">
+                <h3 id="modal-subject-title" class="font-heading font-bold text-lg text-white">Subject History</h3>
+                <button onclick="closeSubjectModal()" class="text-slate-400 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-lg hover:bg-white/5">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
             </div>
-            <div class="flex justify-between text-xs text-slate-400 mb-2">
-                <span>Classes: 20</span>
-                <span>Attended: 18</span>
-            </div>
-            <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                <div class="h-full bg-success transition-all duration-1000" style="width: 90%;"></div>
-            </div>
-        </div>
-
-        <!-- Subject 4 -->
-        <div class="glass-card p-5">
-            <div class="flex justify-between items-center mb-3">
-                <h4 class="font-semibold text-slate-200">Machine Learning</h4>
-                <span class="text-error font-heading font-bold">40%</span>
-            </div>
-            <div class="flex justify-between text-xs text-slate-400 mb-2">
-                <span>Classes: 20</span>
-                <span>Attended: 8</span>
-            </div>
-            <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                <div class="h-full bg-error transition-all duration-1000" style="width: 40%;"></div>
+            
+            <!-- Body / Logs -->
+            <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
+                <div id="modal-loading" class="text-center py-8 hidden">
+                    <svg class="animate-spin w-8 h-8 mx-auto text-accent mb-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    <p class="text-sm text-slate-400">Loading records...</p>
+                </div>
+                
+                <div id="modal-empty" class="text-center py-8 hidden">
+                    <p class="text-slate-400 text-sm">No attendance records found for this subject.</p>
+                </div>
+                
+                <ul id="modal-records-list" class="space-y-3">
+                    <!-- Dynamic records injected here -->
+                </ul>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block dashboard_scripts %}
+<script>
+    const modal = document.getElementById('subject-modal');
+    const modalTitle = document.getElementById('modal-subject-title');
+    const recordsList = document.getElementById('modal-records-list');
+    const loadingState = document.getElementById('modal-loading');
+    const emptyState = document.getElementById('modal-empty');
+    
+    function openSubjectModal(subject) {
+        modal.classList.remove('hidden');
+        modalTitle.textContent = subject;
+        recordsList.innerHTML = '';
+        emptyState.classList.add('hidden');
+        loadingState.classList.remove('hidden');
+        
+        // Fetch specific subject history
+        fetch(`/api/attendance/history?subject=${encodeURIComponent(subject)}`)
+            .then(res => res.json())
+            .then(data => {
+                loadingState.classList.add('hidden');
+                
+                if (data.success && data.records.length > 0) {
+                    data.records.forEach(record => {
+                        const li = document.createElement('li');
+                        li.className = "flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5";
+                        
+                        const statusBadge = record.status === 'present' 
+                            ? `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-success/20 text-success border border-success/20 uppercase tracking-wider"><span class="w-1 h-1 rounded-full bg-success"></span> Present</span>`
+                            : `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-error/20 text-error border border-error/20 uppercase tracking-wider"><span class="w-1 h-1 rounded-full bg-error"></span> Absent</span>`;
+                            
+                        li.innerHTML = `
+                            <div>
+                                <p class="text-sm text-slate-200 font-medium">${record.timestamp}</p>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Match: ${record.confidence}%</p>
+                            </div>
+                            <div>
+                                ${statusBadge}
+                            </div>
+                        `;
+                        recordsList.appendChild(li);
+                    });
+                } else {
+                    emptyState.classList.remove('hidden');
+                }
+            })
+            .catch(err => {
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                emptyState.innerHTML = '<p class="text-error text-sm">Failed to load records.</p>';
+            });
+    }
+    
+    function closeSubjectModal() {
+        modal.classList.add('hidden');
+    }
+</script>
+<style>
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+</style>
 {% endblock %}

@@ -13,6 +13,57 @@ face_bp = Blueprint('face', __name__)
 CASCADE_PATH = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
 face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
 
+# ==========================================
+# GPS GEOFENCING CONFIGURATION (Kanaicha, UP)
+# ==========================================
+COLLEGE_LAT = 26.6119
+COLLEGE_LNG = 83.3931
+MAX_DISTANCE_METERS = 300
+
+import math
+
+def haversine_distance(lat1, lon1, lat2, lon2):
+    """Calculate the great circle distance in meters between two points on the earth."""
+    R = 6371000  # Radius of earth in meters
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2.0) ** 2 + \
+        math.cos(phi1) * math.cos(phi2) * \
+        math.sin(delta_lambda / 2.0) ** 2
+    
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    distance = R * c
+    return distance
+
+def check_liveness_texture(face_img):
+    """
+    Passive Liveness Detection (Texture/Quality Analysis).
+    Detects flat/blurry 2D printed photos vs real 3D faces.
+    
+    Note: For higher security, an ONNX CNN model (like MiniFASNet) 
+    should be hooked here. This is a heuristic approach.
+    """
+    gray = cv2.cvtColor(face_img, cv2.COLOR_BGR2GRAY)
+    
+    # 1. Laplacian Variance (Detects blur common in printed photos)
+    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    
+    # 2. Specular reflection (Detects screen glare on mobile phones)
+    # Screens emit light and cause blown-out white pixels
+    _, thresh = cv2.threshold(gray, 240, 255, cv2.THRESH_BINARY)
+    glare_ratio = cv2.countNonZero(thresh) / (gray.shape[0] * gray.shape[1])
+    
+    # Thresholds (calibrated for standard webcams)
+    if laplacian_var < 50:
+        return False, f"Blurry image detected (Score: {laplacian_var:.1f}). Possible printed photo."
+    if glare_ratio > 0.05:
+        return False, f"Screen glare detected (Ratio: {glare_ratio:.3f}). Possible digital spoofing."
+        
+    return True, "Passed"
+
 def get_face_encoding(face_img):
     """
     Generate a lightweight face encoding using LBP histogram.
@@ -201,8 +252,32 @@ def verify_face():
         return jsonify({'success': False, 'message': 'Invalid image data.'}), 400
     if not subject:
         return jsonify({'success': False, 'message': 'Please select a subject.'}), 400
+        
+    # --- 0. Portal Status Check ---
+    from models.setting import Setting
+    if Setting.get_value('portal_status', 'open') == 'closed':
+        return jsonify({
+            'success': False, 
+            'message': 'The Attendance Portal is currently CLOSED. You cannot mark attendance at this time.'
+        }), 403
+        
+    # --- 1. GPS Geofencing Check ---
+    client_lat = data.get('lat')
+    client_lng = data.get('lng')
     
-    # Check if already marked today
+    if not client_lat or not client_lng:
+        return jsonify({'success': False, 'message': 'GPS Location required. Please allow location permissions.'}), 400
+        
+    distance = haversine_distance(COLLEGE_LAT, COLLEGE_LNG, float(client_lat), float(client_lng))
+    print(f"[*] GPS Check: Student is {distance:.1f} meters away.")
+    
+    if distance > MAX_DISTANCE_METERS:
+        return jsonify({
+            'success': False, 
+            'message': f'You are too far from the college ({int(distance)}m away). You must be within {MAX_DISTANCE_METERS}m to mark attendance.'
+        }), 403
+        
+    # --- Check if already marked today ---
     from models.attendance import Attendance
     if Attendance.already_marked_today(current_user.id, subject):
         return jsonify({'success': False, 'message': f'Attendance for {subject} already marked today! ✅'}), 400
@@ -229,6 +304,12 @@ def verify_face():
         y1, y2 = max(0, y - pad), min(img.shape[0], y + h + pad)
         x1, x2 = max(0, x - pad), min(img.shape[1], x + w + pad)
         face_img = img[y1:y2, x1:x2]
+        
+        # --- 2. Passive Liveness Check (Anti-Spoof) ---
+        is_real, liveness_msg = check_liveness_texture(face_img)
+        if not is_real:
+            print(f"[!] Spoofing detected for {current_user.name}: {liveness_msg}")
+            return jsonify({'success': False, 'message': f'Liveness Check Failed: {liveness_msg}'}), 403
         
         live_encoding = get_face_encoding(face_img)
         stored_encoding = json.loads(current_user.face_encoding)

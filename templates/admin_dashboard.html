@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard — Face-Lock{% endblock %}
+
+{% block content %}
+<div class="flex h-screen overflow-hidden bg-transparent">
+    <!-- Admin Sidebar -->
+    <aside class="w-64 flex-shrink-0 bg-[#0B1120]/50 backdrop-blur-2xl border-r border-white/10 shadow-[4px_0_24px_rgba(0,0,0,0.2)] flex flex-col hidden md:flex relative z-10">
+        <div class="p-6">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+                <span class="font-heading text-lg font-semibold tracking-tight text-white">Attendance Tracker Admin</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-4 py-4 space-y-2 overflow-y-auto">
+            <a href="/admin/dashboard" class="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors bg-amber-500/15 text-amber-500 font-medium">
+                <span>🛡️</span> Admin Panel
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-white/5">
+            <div class="flex items-center justify-between px-2 py-2">
+                <div class="flex items-center gap-3 overflow-hidden">
+                    <div class="w-10 h-10 flex-shrink-0 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold text-sm border border-white/10">
+                        {{ admin.name[0].upper() if admin.name else 'A' }}
+                    </div>
+                    <div class="overflow-hidden">
+                        <p class="text-sm font-medium text-white truncate">{{ admin.name }}</p>
+                        <p class="text-xs text-amber-500 truncate">Administrator</p>
+                    </div>
+                </div>
+                <button id="sidebar-logout" class="flex-shrink-0 text-slate-400 hover:text-error transition-colors p-2 rounded-lg hover:bg-white/5" title="Logout">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto relative p-6 lg:p-10 max-w-6xl mx-auto w-full">
+        <div class="mb-8 animate-fade-in-up flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <h1 class="font-heading text-3xl font-bold text-white mb-2">Admin Dashboard 👑</h1>
+                <p class="text-slate-400">Manage students, review face data, and approve reset requests.</p>
+            </div>
+            
+            <!-- Portal Status Toggle -->
+            <div class="glass-card p-4 flex items-center gap-4">
+                <div class="text-sm">
+                    <div class="text-slate-400 mb-0.5">Attendance Portal</div>
+                    <div id="portal-status-text" class="font-medium font-heading">Loading...</div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="portal-toggle" class="sr-only peer" disabled>
+                    <div class="w-14 h-7 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-success"></div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" id="admin-stats">
+            <div class="glass-card p-6 animate-fade-in-up">
+                <div class="text-sm text-slate-400 mb-1">Total Students</div>
+                <div class="text-3xl font-bold text-white" id="stat-total">-</div>
+            </div>
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.1s;">
+                <div class="text-sm text-slate-400 mb-1">Faces Registered</div>
+                <div class="text-3xl font-bold text-success" id="stat-registered">-</div>
+            </div>
+            <div class="glass-card p-6 animate-fade-in-up" style="animation-delay: 0.2s;">
+                <div class="text-sm text-slate-400 mb-1">Pending Resets</div>
+                <div class="text-3xl font-bold text-warning" id="stat-pending">-</div>
+            </div>
+        </div>
+
+        <!-- Today's Live Attendance -->
+        <div class="mb-8 animate-fade-in-up" style="animation-delay: 0.25s;">
+            <h2 class="text-xl font-heading font-semibold text-white mb-4">Today's Live Attendance</h2>
+            <div class="glass-card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 bg-white/5 text-slate-300 text-sm">
+                            <th class="p-4 font-medium">Roll No</th>
+                            <th class="p-4 font-medium">Student Name</th>
+                            <th class="p-4 font-medium text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="today-table-body" class="text-sm text-slate-400">
+                        <!-- Loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Pending Requests -->
+        <div class="mb-8 animate-fade-in-up" style="animation-delay: 0.3s;">
+            <h2 class="text-xl font-heading font-semibold text-white mb-4">Pending Face Reset Requests</h2>
+            <div class="glass-card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 bg-white/5 text-slate-300 text-sm">
+                            <th class="p-4 font-medium">Roll No</th>
+                            <th class="p-4 font-medium">Name</th>
+                            <th class="p-4 font-medium">Email</th>
+                            <th class="p-4 font-medium text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pending-table-body" class="text-sm text-slate-400">
+                        <!-- Loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Student Directory -->
+        <div class="animate-fade-in-up" style="animation-delay: 0.4s;">
+            <h2 class="text-xl font-heading font-semibold text-white mb-4">Student Directory</h2>
+            <div class="glass-card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 bg-white/5 text-slate-300 text-sm">
+                            <th class="p-4 font-medium">Roll No</th>
+                            <th class="p-4 font-medium">Name</th>
+                            <th class="p-4 font-medium">Email</th>
+                            <th class="p-4 font-medium">Face Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="directory-table-body" class="text-sm text-slate-400">
+                        <!-- Loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- View Attendance Modal -->
+<div id="view-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity opacity-0">
+    <div class="bg-[#0B1120] border border-white/10 rounded-2xl shadow-2xl w-full max-w-md transform scale-95 transition-all overflow-hidden" id="view-modal-content">
+        <div class="p-6 border-b border-white/10 flex justify-between items-center bg-white/5">
+            <h3 class="text-lg font-heading font-semibold text-white">Attendance Details</h3>
+            <button onclick="closeModal()" class="text-slate-400 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+        <div class="p-6 space-y-4">
+            <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                <span class="text-slate-400 text-sm">Subject</span>
+                <span class="text-white font-medium" id="modal-subject"></span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                <span class="text-slate-400 text-sm">Time</span>
+                <span class="text-white font-medium" id="modal-time"></span>
+            </div>
+            <div class="flex justify-between items-center border-b border-white/5 pb-3">
+                <span class="text-slate-400 text-sm">Status</span>
+                <span id="modal-status"></span>
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-slate-400 text-sm">AI Confidence</span>
+                <span class="text-white font-medium" id="modal-confidence"></span>
+            </div>
+        </div>
+        <div class="p-6 pt-2">
+            <button onclick="closeModal()" class="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors font-medium">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Logout logic
+    document.getElementById('sidebar-logout')?.addEventListener('click', async () => {
+        const res = await fetch('/api/logout', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) window.location.href = data.redirect || '/login';
+    });
+
+    // Load Admin Data
+    async function loadAdminData() {
+        try {
+            // Load stats
+            const statsRes = await fetch('/admin/api/stats');
+            const stats = await statsRes.json();
+            document.getElementById('stat-total').textContent = stats.total_students;
+            document.getElementById('stat-registered').textContent = stats.registered_faces;
+            document.getElementById('stat-pending').textContent = stats.pending_resets;
+
+            // Load Today's Attendance
+            const todayRes = await fetch('/admin/api/today-attendance');
+            const todayData = await todayRes.json();
+            const todayBody = document.getElementById('today-table-body');
+            todayBody.innerHTML = '';
+            
+            if (todayData.attendance.length === 0) {
+                todayBody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-slate-500">No attendance marked yet today.</td></tr>`;
+            } else {
+                todayData.attendance.forEach((r, idx) => {
+                    // Storing data in a global map for the modal
+                    window.attendanceMap = window.attendanceMap || {};
+                    window.attendanceMap[idx] = r;
+
+                    todayBody.innerHTML += `
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <td class="p-4 text-white">${r.roll_no}</td>
+                            <td class="p-4 font-medium text-white">${r.student_name}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="openModal(${idx})" class="text-accent hover:text-white transition-colors" title="View Details">
+                                    <svg class="w-5 h-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // Load students
+            const stdRes = await fetch('/admin/api/students');
+            const stdData = await stdRes.json();
+            
+            const pendingBody = document.getElementById('pending-table-body');
+            const directoryBody = document.getElementById('directory-table-body');
+            
+            pendingBody.innerHTML = '';
+            directoryBody.innerHTML = '';
+            
+            let pendingCount = 0;
+
+            stdData.students.forEach(s => {
+                // Populate Directory
+                const faceBadge = s.face_registered 
+                    ? '<span class="px-2 py-1 text-xs font-medium rounded-full bg-success/20 text-success border border-success/30">Registered</span>'
+                    : '<span class="px-2 py-1 text-xs font-medium rounded-full bg-slate-500/20 text-slate-400 border border-slate-500/30">Unregistered</span>';
+
+                directoryBody.innerHTML += `
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="p-4 text-white">${s.roll_no}</td>
+                        <td class="p-4 font-medium text-white">${s.name}</td>
+                        <td class="p-4">${s.email}</td>
+                        <td class="p-4">${faceBadge}</td>
+                    </tr>
+                `;
+
+                // Populate Pending Requests
+                if (s.face_reset_requested) {
+                    pendingCount++;
+                    pendingBody.innerHTML += `
+                        <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                            <td class="p-4 text-white">${s.roll_no}</td>
+                            <td class="p-4 font-medium text-white">${s.name}</td>
+                            <td class="p-4">${s.email}</td>
+                            <td class="p-4 text-right">
+                                <button onclick="handleReset(${s.id}, 'approve')" class="px-3 py-1 bg-success/20 text-success rounded-lg hover:bg-success/30 transition-colors mr-2">Approve</button>
+                                <button onclick="handleReset(${s.id}, 'reject')" class="px-3 py-1 bg-error/20 text-error rounded-lg hover:bg-error/30 transition-colors">Reject</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+
+            if (pendingCount === 0) {
+                pendingBody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-slate-500">No pending reset requests.</td></tr>`;
+            }
+
+            // Load Portal Status
+            const portalRes = await fetch('/admin/api/portal-status');
+            const portalData = await portalRes.json();
+            updatePortalUI(portalData.status);
+
+        } catch (e) {
+            console.error("Failed to load admin data", e);
+        }
+    }
+
+    // Portal Toggle Logic
+    const portalToggle = document.getElementById('portal-toggle');
+    const portalStatusText = document.getElementById('portal-status-text');
+
+    function updatePortalUI(status) {
+        portalToggle.disabled = false;
+        if (status === 'open') {
+            portalToggle.checked = true;
+            portalStatusText.textContent = 'OPEN';
+            portalStatusText.className = 'font-medium font-heading text-success';
+        } else {
+            portalToggle.checked = false;
+            portalStatusText.textContent = 'CLOSED';
+            portalStatusText.className = 'font-medium font-heading text-error';
+        }
+    }
+
+    portalToggle.addEventListener('change', async (e) => {
+        const newStatus = e.target.checked ? 'open' : 'closed';
+        portalToggle.disabled = true; // prevent spam
+        portalStatusText.textContent = 'Updating...';
+        portalStatusText.className = 'font-medium font-heading text-slate-400';
+        
+        try {
+            const res = await fetch('/admin/api/toggle-portal', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({status: newStatus})
+            });
+            const data = await res.json();
+            if (data.success) {
+                updatePortalUI(data.status);
+            } else {
+                alert(data.message);
+                updatePortalUI(newStatus === 'open' ? 'closed' : 'open'); // revert
+            }
+        } catch (err) {
+            alert('Failed to update portal status.');
+            updatePortalUI(newStatus === 'open' ? 'closed' : 'open');
+        }
+    });
+
+    // Handle Approve/Reject
+    window.handleReset = async (studentId, action) => {
+        if (!confirm(`Are you sure you want to ${action} this reset request?`)) return;
+        
+        try {
+            const res = await fetch(`/admin/api/${action}-reset/${studentId}`, { method: 'POST' });
+            const data = await res.json();
+            alert(data.message);
+            loadAdminData(); // Refresh UI
+        } catch (e) {
+            alert('Error processing request.');
+        }
+    };
+
+    // Modal Logic
+    const modal = document.getElementById('view-modal');
+    const modalContent = document.getElementById('view-modal-content');
+    
+    window.openModal = (idx) => {
+        const data = window.attendanceMap[idx];
+        document.getElementById('modal-subject').textContent = data.subject;
+        document.getElementById('modal-time').textContent = data.time;
+        document.getElementById('modal-confidence').textContent = data.confidence ? data.confidence + '%' : 'N/A';
+        
+        const statusEl = document.getElementById('modal-status');
+        if (data.status === 'present') {
+            statusEl.innerHTML = '<span class="px-2 py-1 text-xs font-medium rounded-full bg-success/20 text-success border border-success/30">Present ✅</span>';
+        } else {
+            statusEl.innerHTML = '<span class="px-2 py-1 text-xs font-medium rounded-full bg-error/20 text-error border border-error/30">Absent ❌</span>';
+        }
+
+        modal.classList.remove('hidden');
+        // trigger reflow
+        void modal.offsetWidth;
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    };
+
+    window.closeModal = () => {
+        modal.classList.add('opacity-0');
+        modalContent.classList.remove('scale-100');
+        modalContent.classList.add('scale-95');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    };
+
+    // Initialize
+    loadAdminData();
+</script>
+{% endblock %}

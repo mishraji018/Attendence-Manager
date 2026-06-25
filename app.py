@@ -31,11 +31,13 @@ def create_app(config_name=None):
     from routes.auth import auth_bp
     from routes.face import face_bp
     from routes.attendance import attendance_bp
+    from routes.admin import admin_bp
     
     app.register_blueprint(register_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(face_bp)
     app.register_blueprint(attendance_bp)
+    app.register_blueprint(admin_bp)
 
     # Landing page route
     @app.route('/')
@@ -47,7 +49,16 @@ def create_app(config_name=None):
         # Ensure database directory exists
         db_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
         os.makedirs(db_dir, exist_ok=True)
+        
+        # Import Setting model BEFORE create_all so it gets created
+        from models.setting import Setting
         db.create_all()
+        
+        # Seed default settings
+        if db.session.get(Setting, 'portal_status') is None:
+            db.session.add(Setting(key='portal_status', value='open'))
+            db.session.commit()
+            
         print('[OK] Database tables created successfully.')
 
     return app

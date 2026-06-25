@@ -72,6 +72,17 @@
                 </div>
                 <p id="error-msg" class="text-error text-sm font-medium text-center px-4"></p>
             </div>
+            
+            <!-- Portal Closed Overlay -->
+            <div id="portal-closed-overlay" class="absolute inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center hidden z-20">
+                <div class="w-20 h-20 rounded-full bg-error/20 flex items-center justify-center mb-4">
+                    <svg class="w-10 h-10 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-white text-xl font-heading font-bold mb-1">Portal Closed</h3>
+                <p class="text-slate-400 text-sm text-center max-w-xs">The Administrator has currently closed the attendance portal. Please wait until it is opened again.</p>
+            </div>
         </div>
 
         <!-- Status Bar -->
@@ -80,20 +91,34 @@
         </div>
 
         <!-- Scan Button -->
-        <button id="scan-btn" class="btn-gradient w-full py-4 text-base font-semibold flex justify-center items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
-            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
-            Scan & Mark Attendance
+        <button id="scan-btn" disabled class="btn-gradient w-full py-4 text-base font-semibold flex justify-center items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all mb-4">
+            <svg class="animate-spin w-5 h-5 text-white/70" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+            <span id="scan-btn-text">Initializing AI Liveness...</span>
         </button>
+
+        <!-- Caution Note -->
+        <div class="bg-[#1E293B]/50 border border-[#334155] rounded-lg p-3 flex items-start gap-3">
+            <div class="text-amber-500 mt-0.5">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path></svg>
+            </div>
+            <div>
+                <h4 class="text-sm font-semibold text-white">Caution: Remove Glasses</h4>
+                <p class="text-xs text-slate-400 mt-1">Please remove spectacles or sunglasses before scanning. The AI needs a clear view of your eyes to verify your blink.</p>
+            </div>
+        </div>
     </div>
     {% endif %}
 </div>
 {% endblock %}
 
 {% block dashboard_scripts %}
-<script>
+<script type="module">
+    import { FaceLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3";
+
     const video = document.getElementById('scan-video');
     const camLoading = document.getElementById('cam-loading');
     const scanBtn = document.getElementById('scan-btn');
+    const scanBtnText = document.getElementById('scan-btn-text');
     const subjectSelect = document.getElementById('subject-select');
     const statusBar = document.getElementById('status-bar');
     const statusText = document.getElementById('status-text');
@@ -102,16 +127,48 @@
     const errorMsg = document.getElementById('error-msg');
     const successSubject = document.getElementById('success-subject');
     const scanLine = document.getElementById('scan-line');
+    
     let stream = null;
+    let faceLandmarker;
+    let blinkVerified = false;
+    let isVideoPlaying = false;
+    let portalClosed = false;
 
-    // Start camera on page load
+    // Check portal status before starting camera
+    async function checkPortalStatus() {
+        try {
+            const res = await fetch('/api/portal-status');
+            const data = await res.json();
+            if (data.status === 'closed') {
+                portalClosed = true;
+                if (camLoading) camLoading.classList.add('hidden');
+                document.getElementById('portal-closed-overlay').classList.remove('hidden');
+                scanBtn.innerHTML = '🚫 Portal Closed';
+                scanBtn.classList.remove('btn-gradient');
+                scanBtn.classList.add('bg-slate-700', 'text-slate-400');
+                return false;
+            }
+            return true;
+        } catch (e) {
+            console.error(e);
+            return true; // fail open
+        }
+    }
+
+    // Start camera
     async function startCamera() {
         if (!video) return;
+        
+        const isOpen = await checkPortalStatus();
+        if (!isOpen) return;
+
         try {
             stream = await navigator.mediaDevices.getUserMedia({ video: true });
             video.srcObject = stream;
-            video.onloadedmetadata = () => {
+            video.onloadeddata = () => {
+                isVideoPlaying = true;
                 if (camLoading) camLoading.classList.add('hidden');
+                initializeLiveness();
             };
         } catch (err) {
             if (camLoading) camLoading.innerHTML = '<span class="text-error text-center px-4">Camera access denied. Please allow permissions.</span>';
@@ -119,10 +176,64 @@
     }
     startCamera();
 
+    // Initialize MediaPipe FaceLandmarker for Blink Detection
+    async function initializeLiveness() {
+        try {
+            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+            faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
+                baseOptions: {
+                    modelAssetPath: `https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task`,
+                    delegate: "GPU"
+                },
+                outputFaceBlendshapes: true,
+                runningMode: "VIDEO",
+                numFaces: 1
+            });
+            
+            scanBtnText.textContent = "Please Blink to Verify Liveness 👁️";
+            detectBlink();
+        } catch (error) {
+            console.error("Liveness AI Error:", error);
+            // Fallback if AI fails to load
+            blinkVerified = true;
+            enableScanBtn();
+        }
+    }
+
+    let lastVideoTime = -1;
+    function detectBlink() {
+        if (blinkVerified || !isVideoPlaying) return;
+
+        let startTimeMs = performance.now();
+        if (lastVideoTime !== video.currentTime) {
+            lastVideoTime = video.currentTime;
+            const results = faceLandmarker.detectForVideo(video, startTimeMs);
+            
+            if (results.faceBlendshapes && results.faceBlendshapes.length > 0) {
+                const blendshapes = results.faceBlendshapes[0].categories;
+                // Find blink scores
+                const leftBlink = blendshapes.find(b => b.categoryName === "eyeBlinkLeft")?.score || 0;
+                const rightBlink = blendshapes.find(b => b.categoryName === "eyeBlinkRight")?.score || 0;
+                
+                // If both eyes are significantly closed (> 0.4 score usually means blink)
+                if (leftBlink > 0.4 && rightBlink > 0.4) {
+                    blinkVerified = true;
+                    enableScanBtn();
+                    return; // Stop loop
+                }
+            }
+        }
+        requestAnimationFrame(detectBlink);
+    }
+
+    function enableScanBtn() {
+        scanBtn.disabled = false;
+        scanBtn.innerHTML = '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg> <span id="scan-btn-text">Scan & Mark Attendance</span>';
+    }
+
     // Scan button handler
     if (scanBtn) {
         scanBtn.addEventListener('click', async () => {
-            // Validate subject
             if (!subjectSelect || !subjectSelect.value) {
                 subjectSelect.focus();
                 subjectSelect.classList.add('border-error');
@@ -158,21 +269,37 @@
             scanBtn.innerHTML = '<svg class="animate-spin w-6 h-6" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Verifying Face...';
 
             statusBar.classList.remove('hidden');
-            statusText.textContent = 'Analyzing your face...';
+            statusText.textContent = 'Acquiring GPS location...';
             statusText.className = 'text-sm text-accent';
 
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
+            if (!navigator.geolocation) {
+                showError('Geolocation is not supported by your browser.');
+                return;
+            }
 
-                const response = await fetch('/api/face/verify', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imageData, subject: subjectSelect.value }),
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                const data = await response.json();
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                statusText.textContent = 'Analyzing your face...';
+
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+                    const response = await fetch('/api/face/verify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            image: imageData, 
+                            subject: subjectSelect.value,
+                            lat: lat,
+                            lng: lng
+                        }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    const data = await response.json();
 
                 // Stop scan animation
                 scanLine.classList.add('opacity-0');
@@ -214,15 +341,30 @@
                     scanBtn.innerHTML = '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg> Try Again';
                 }
             } catch (error) {
-                scanLine.classList.add('opacity-0');
-                scanLine.style.animation = '';
-                statusText.textContent = 'Network error. Please try again.';
-                statusText.className = 'text-sm text-error';
-                scanBtn.disabled = false;
-                scanBtn.innerHTML = 'Try Again';
+                showError('Network error. Please try again.');
             }
-        });
-    }
+        }, (error) => {
+            // Geolocation error handler
+            let msg = 'Failed to get location.';
+            if (error.code === 1) msg = 'Location permission denied. Please allow location access to mark attendance.';
+            else if (error.code === 2) msg = 'Location unavailable. Please check your GPS.';
+            else if (error.code === 3) msg = 'Location request timed out.';
+            showError(msg);
+        }, { enableHighAccuracy: true, timeout: 10000 });
+        
+        function showError(msgText) {
+            scanLine.classList.add('opacity-0');
+            scanLine.style.animation = '';
+            errorOverlay.classList.remove('hidden');
+            errorMsg.textContent = msgText;
+            statusText.textContent = msgText;
+            statusText.className = 'text-sm text-error';
+            setTimeout(() => { errorOverlay.classList.add('hidden'); }, 4000);
+            scanBtn.disabled = false;
+            scanBtn.innerHTML = '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg> Try Again';
+        }
+    });
+}
 
     // Cleanup on page leave
     window.addEventListener('beforeunload', () => {
