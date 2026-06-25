@@ -17,9 +17,12 @@ class DevelopmentConfig(Config):
     DEBUG = True
     TEMPLATES_AUTO_RELOAD = True
     SEND_FILE_MAX_AGE_DEFAULT = 0
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(
-        os.path.abspath(os.path.dirname(__file__)), 'database', 'face_lock.db'
-    )
+    if os.environ.get('VERCEL'):
+        SQLALCHEMY_DATABASE_URI = 'sqlite:////tmp/face_lock.db'
+    else:
+        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(
+            os.path.abspath(os.path.dirname(__file__)), 'database', 'face_lock.db'
+        )
 
 
 class ProductionConfig(Config):

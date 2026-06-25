@@ -46,20 +46,26 @@ def create_app(config_name=None):
 
     # Create database tables
     with app.app_context():
-        # Ensure database directory exists
-        db_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
-        os.makedirs(db_dir, exist_ok=True)
-        
-        # Import Setting model BEFORE create_all so it gets created
-        from models.setting import Setting
-        db.create_all()
-        
-        # Seed default settings
-        if db.session.get(Setting, 'portal_status') is None:
-            db.session.add(Setting(key='portal_status', value='open'))
-            db.session.commit()
+        try:
+            # Ensure database directory exists
+            db_dir = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'database')
+            os.makedirs(db_dir, exist_ok=True)
+        except Exception as e:
+            print(f'[WARNING] Could not create database directory: {e}')
             
-        print('[OK] Database tables created successfully.')
+        try:
+            # Import Setting model BEFORE create_all so it gets created
+            from models.setting import Setting
+            db.create_all()
+            
+            # Seed default settings
+            if db.session.get(Setting, 'portal_status') is None:
+                db.session.add(Setting(key='portal_status', value='open'))
+                db.session.commit()
+                
+            print('[OK] Database tables created successfully.')
+        except Exception as e:
+            print(f'[ERROR] Database initialization failed: {e}')
 
     return app
 
