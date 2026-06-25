@@ -33,32 +33,40 @@ def login():
             'message': 'Email and password are required.'
         }), 400
 
-    # Find student by email
-    student = Student.query.filter_by(email=email).first()
+    try:
+        # Find student by email
+        student = Student.query.filter_by(email=email).first()
 
-    if not student:
+        if not student:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid email or password.'
+            }), 401
+
+        # Verify password
+        if not bcrypt.checkpw(password.encode('utf-8'), student.password_hash.encode('utf-8')):
+            return jsonify({
+                'success': False,
+                'message': 'Invalid email or password.'
+            }), 401
+
+        # Login the user (Flask-Login session)
+        login_user(student, remember=data.get('remember', False))
+
+        redirect_url = url_for('admin.admin_dashboard') if student.is_admin else url_for('auth.dashboard_page')
+
+        return jsonify({
+            'success': True,
+            'message': 'Login successful!',
+            'redirect': redirect_url
+        })
+    except Exception as e:
+        import traceback
+        print("Login Error:", traceback.format_exc())
         return jsonify({
             'success': False,
-            'message': 'Invalid email or password.'
-        }), 401
-
-    # Verify password
-    if not bcrypt.checkpw(password.encode('utf-8'), student.password_hash.encode('utf-8')):
-        return jsonify({
-            'success': False,
-            'message': 'Invalid email or password.'
-        }), 401
-
-    # Login the user (Flask-Login session)
-    login_user(student, remember=data.get('remember', False))
-
-    redirect_url = url_for('admin.admin_dashboard') if student.is_admin else url_for('auth.dashboard_page')
-
-    return jsonify({
-        'success': True,
-        'message': 'Login successful!',
-        'redirect': redirect_url
-    })
+            'message': f'Server Error: {str(e)}'
+        }), 500
 
 
 @auth_bp.route('/api/logout', methods=['POST'])
