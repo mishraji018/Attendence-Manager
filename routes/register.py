@@ -62,40 +62,48 @@ def register():
     if password != confirm_password:
         errors['confirm_password'] = 'Passwords do not match.'
 
-    # Check for duplicate roll number
-    if not errors.get('roll_no'):
-        existing = Student.query.filter_by(roll_no=roll_no).first()
-        if existing:
-            errors['roll_no'] = 'This roll number is already registered.'
+    try:
+        # Check for duplicate roll number
+        if not errors.get('roll_no'):
+            existing = Student.query.filter_by(roll_no=roll_no).first()
+            if existing:
+                errors['roll_no'] = 'This roll number is already registered.'
 
-    # Check for duplicate email
-    if not errors.get('email'):
-        existing = Student.query.filter_by(email=email).first()
-        if existing:
-            errors['email'] = 'This email is already registered.'
+        # Check for duplicate email
+        if not errors.get('email'):
+            existing = Student.query.filter_by(email=email).first()
+            if existing:
+                errors['email'] = 'This email is already registered.'
 
-    # Return errors if any
-    if errors:
-        return jsonify({'success': False, 'errors': errors}), 400
+        # Return errors if any
+        if errors:
+            return jsonify({'success': False, 'errors': errors}), 400
 
-    # --- Create Student ---
-    password_hash = bcrypt.hashpw(
-        password.encode('utf-8'),
-        bcrypt.gensalt()
-    ).decode('utf-8')
+        # --- Create Student ---
+        password_hash = bcrypt.hashpw(
+            password.encode('utf-8'),
+            bcrypt.gensalt()
+        ).decode('utf-8')
 
-    student = Student(
-        name=name,
-        roll_no=roll_no,
-        email=email,
-        section=section,
-        password_hash=password_hash
-    )
+        student = Student(
+            name=name,
+            roll_no=roll_no,
+            email=email,
+            section=section,
+            password_hash=password_hash
+        )
 
-    db.session.add(student)
-    db.session.commit()
+        db.session.add(student)
+        db.session.commit()
 
-    return jsonify({
-        'success': True,
-        'message': 'Registration successful! Please login.'
-    }), 201
+        return jsonify({
+            'success': True,
+            'message': 'Registration successful! Please login.'
+        })
+    except Exception as e:
+        import traceback
+        print("Register Error:", traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'message': f'Server Error: {str(e)}'
+        }), 500
